@@ -1,424 +1,493 @@
-// ═══════════════════════════════════════════════════════════
-// 玄繕 業務管理 GAS バックエンド — 完成版
-// ═══════════════════════════════════════════════════════════
-// スプレッドシート列構造（A〜W = 23列）:
-// A:案件番号  B:日付  C:顧客名  D:顧客コード  E:現場名  F:作業種別
-// G:作業詳細  H:単位  I:請求単価  J:数量  K:金額  L:課税区分
-// M:消費税  N:税込金額  O:【総合計】  P:材料費  Q:作業時間
-// R:人件費  S:実際経費  T:【利益】  U:備考  V:画像フォルダURL  W:ステータス
-// ヘッダー: 10行目  データ開始: 11行目
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>玄繕 業務管理</title>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600&family=Noto+Sans+JP:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#1a1a18;--ink2:#4a4a46;--ink3:#8a8a84;--bg:#faf9f6;--bg2:#f4f2ec;--stone:#e8e5dc;--bdr:#d8d4c8;--gold:#8a7a5a;--red:#8a2c2c;--grn:#2c6a3e;--serif:'Shippori Mincho',serif;--sans:'Noto Sans JP',sans-serif;--r:10px}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:var(--sans);background:var(--bg2);color:var(--ink);font-size:14px;min-height:100vh;padding-bottom:72px}
+.hdr{background:var(--ink);color:var(--bg);padding:0 16px;height:48px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200}
+.logo{font-family:var(--serif);font-size:17px;letter-spacing:.1em}
+.logo small{font-family:var(--sans);font-size:10px;opacity:.5;margin-left:8px;font-weight:300}
+.dot{width:8px;height:8px;border-radius:50%;background:#666;display:inline-block}.dot.ok{background:#4a8}.dot.err{background:var(--red)}
+.bnav{position:fixed;bottom:0;left:0;right:0;background:var(--bg);border-top:1px solid var(--bdr);display:flex;z-index:200;padding-bottom:env(safe-area-inset-bottom,0)}
+.bnav button{flex:1;border:none;background:none;padding:8px 0 6px;font-size:10px;color:var(--ink3);font-family:var(--sans);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+.bnav button.on{color:var(--ink);font-weight:500}
+.bnav svg{width:22px;height:22px}
+.pg{display:none;padding:16px;max-width:640px;margin:0 auto}.pg.on{display:block}
+.cd{background:var(--bg);border:1px solid var(--bdr);border-radius:var(--r);padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.ct{font-family:var(--serif);font-size:14px;font-weight:500;margin-bottom:12px;color:var(--ink2);letter-spacing:.06em}
+label{display:block;font-size:12px;color:var(--ink3);margin-bottom:4px}
+input,select,textarea{width:100%;border:1px solid var(--bdr);border-radius:6px;padding:9px 10px;font-size:14px;font-family:var(--sans);background:#fff;color:var(--ink);margin-bottom:10px;-webkit-appearance:none}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 2px rgba(138,122,90,.15)}
+textarea{resize:vertical;min-height:60px}
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.r3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:8px;padding:11px 20px;font-size:13px;font-weight:500;font-family:var(--sans);cursor:pointer;transition:.15s;width:100%}
+.bp{background:var(--ink);color:#fff}.bp:hover{background:#333}.bp:disabled{opacity:.4;cursor:not-allowed}
+.bs{background:transparent;color:var(--ink);border:1px solid var(--bdr)}.bs:hover{background:var(--stone)}
+.bsm{padding:7px 14px;font-size:12px}
+.brow{display:flex;gap:8px;margin-top:12px}
+.iw{overflow-x:auto;margin:8px -4px}
+.it{width:100%;border-collapse:collapse;font-size:12px;min-width:480px}
+.it th{background:var(--stone);padding:6px 4px;font-weight:500;text-align:left;font-size:11px;white-space:nowrap}
+.it td{padding:4px;border-bottom:1px solid var(--stone);vertical-align:middle}
+.it input,.it select{margin-bottom:0;padding:6px 4px;font-size:12px;border-radius:4px}
+.ci{background:var(--bg);border:1px solid var(--bdr);border-radius:var(--r);padding:14px 16px;margin-bottom:8px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.ci:active{background:var(--stone)}
+.toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none}.toast.show{opacity:1}
+.ld{text-align:center;padding:20px;color:var(--ink3);font-size:13px}
+.sp{width:24px;height:24px;border:2px solid var(--stone);border-top-color:var(--ink);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.pz{border:1.5px dashed var(--bdr);border-radius:var(--r);padding:20px;text-align:center;cursor:pointer}
+.pz:active{background:var(--stone)}
+.pg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:6px;margin-top:10px}
+.pt{width:100%;aspect-ratio:1;border-radius:6px;object-fit:cover;border:1px solid var(--bdr)}
+/* 書類プレビュー */
+.dp{background:#fff;border:1px solid var(--bdr);border-radius:var(--r);padding:24px 20px;font-size:13px;line-height:1.7}
+.dp .dtt{text-align:center;margin-bottom:20px}
+.dp .dtx{font-family:var(--serif);font-size:22px;font-weight:600;letter-spacing:.15em;border-bottom:2px solid var(--ink);display:inline-block;padding-bottom:4px}
+.dp table{width:100%;border-collapse:collapse;margin:12px 0;font-size:12px}
+.dp th{background:var(--ink);color:#fff;padding:6px 8px;font-weight:500;text-align:left}
+.dp td{padding:6px 8px;border-bottom:1px solid var(--stone)}
+.stamp{width:60px;height:60px;border:2px solid var(--red);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--red);font-family:var(--serif);font-size:14px;font-weight:600}
+@media print{
+  body{background:#fff;padding:0}
+  .hdr,.bnav,.np,.brow{display:none!important}
+  .pg{display:none!important}.pg.on{display:block!important;max-width:none;padding:0}
+  .dp{border:none;padding:12mm 15mm;font-size:10pt;box-shadow:none}
+  .dp th{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .cd{box-shadow:none;border:none}
+}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <div class="logo">玄繕<small>業務管理</small></div>
+  <span class="dot" id="dot"></span>
+</div>
+<div class="toast" id="toast"></div>
 
-var SHEET_ID = '1iRJttwhivWf8tNSQPE6bmUVQYCHahuW7-y1tYC1cbWA';
-var FOLDER_ID = '1xQPqvroHbytFmPu0trICCG8_TEJQnACE';
-var COST_RATE = 2000; // 人件費単価（円/時間）
+<!-- 案件一覧 -->
+<div class="pg on" id="pg-list">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div class="ct" style="margin:0">案件一覧</div>
+    <button class="btn bp bsm" onclick="newCase()">＋ 新規</button>
+  </div>
+  <div id="clist"><div class="ld"><div class="sp"></div>読み込み中...</div></div>
+</div>
 
-// ─── エントリポイント ───
-function doGet(e) {
-  var param = e.parameter || {};
-  var action = param.action || '';
-  // payloadパラメータにJSON文字列が入っている場合はパースして統合
-  var p = {};
-  if (param.payload) {
-    try { p = JSON.parse(param.payload); } catch(ex) {}
-  }
-  // paramの個別パラメータもpに統合（payloadが優先）
-  for (var k in param) {
-    if (k !== 'action' && k !== 'payload' && !p[k]) p[k] = param[k];
-  }
+<!-- 案件登録/編集 -->
+<div class="pg" id="pg-edit">
+  <div class="ct" id="etitle">新規案件登録</div>
+  <div class="cd">
+    <input type="hidden" id="f-no">
+    <div class="r2">
+      <div><label>日付</label><input type="date" id="f-date"></div>
+      <div><label>作業種別</label>
+        <select id="f-type"><option>石材クリーニング</option><option>石材研磨</option><option>石材補修</option><option>石材コーティング</option><option>その他</option></select>
+      </div>
+    </div>
+    <label>顧客名</label>
+    <input type="text" id="f-client" list="dlc" placeholder="顧客名を入力">
+    <datalist id="dlc"></datalist>
+    <label>現場名</label>
+    <input type="text" id="f-site" placeholder="現場名・住所">
+  </div>
+  <div class="cd">
+    <div class="ct">明細</div>
+    <div class="iw"><table class="it"><thead><tr><th style="width:35%">内容</th><th style="width:8%">単位</th><th style="width:15%">単価</th><th style="width:8%">数量</th><th style="width:14%">税</th><th style="width:12%;text-align:right">金額</th><th style="width:8%"></th></tr></thead><tbody id="ib"></tbody></table></div>
+    <button class="btn bs bsm" onclick="addRow('ib')" style="margin-top:6px">＋ 行追加</button>
+    <div style="text-align:right;margin-top:8px;font-size:15px;font-weight:500">合計: <span id="itotal">¥0</span></div>
+  </div>
+  <div class="cd">
+    <div class="ct">原価</div>
+    <div class="r3">
+      <div><label>材料費</label><input type="number" id="f-mat" value="0" oninput="calcCost()"></div>
+      <div><label>作業時間(h)</label><input type="number" id="f-hrs" value="0" step="0.5" oninput="calcCost()"></div>
+      <div><label>単価/h</label><input type="number" id="f-rate" value="2000" oninput="calcCost()"></div>
+    </div>
+    <div style="font-size:12px;color:var(--ink3);margin-top:4px">原価: <span id="ctotal">¥0</span> ／ 利益: <span id="cprofit">¥0</span></div>
+  </div>
+  <div class="cd">
+    <div class="ct">写真</div>
+    <div class="pz" onclick="document.getElementById('pi').click()">📷 タップして撮影・選択</div>
+    <input type="file" id="pi" accept="image/*" capture="environment" multiple style="display:none" onchange="addPhotos(this)">
+    <div class="pg-grid" id="pgrid"></div>
+  </div>
+  <div class="cd">
+    <label>備考</label><textarea id="f-note" rows="2" placeholder="備考・メモ"></textarea>
+  </div>
+  <div class="brow">
+    <button class="btn bs" onclick="nav('list')">戻る</button>
+    <button class="btn bp" id="bsave" onclick="saveCase()">保存</button>
+  </div>
+</div>
 
-  var result;
-  try {
-    if (action === 'getCases') {
-      result = getCases();
-    } else if (action === 'getClients') {
-      result = getClients();
-    } else if (action === 'saveCase') {
-      result = saveCase(p);
-    } else if (action === 'updateCase') {
-      result = updateCase(p);
-    } else if (action === 'issueDoc') {
-      result = issueDoc(p);
-    } else if (action === 'uploadPhoto') {
-      result = uploadPhoto(p);
-    } else {
-      result = { ok: true, message: '玄繕GAS稼働中' };
-    }
-  } catch (err) {
-    result = { error: err.message };
-  }
-  return ContentService.createTextOutput(JSON.stringify(result))
-    .setMimeType(ContentService.MimeType.JSON);
+<!-- 書類発行 -->
+<div class="pg" id="pg-docs">
+  <div class="ct">書類発行</div>
+  <div class="cd">
+    <div class="r2">
+      <div><label>書類種別</label>
+        <select id="d-type" onchange="mkDocNo()"><option value="見積書">見積書</option><option value="請求書">請求書</option><option value="納品書">納品書</option><option value="報告書">報告書</option></select>
+      </div>
+      <div><label>書類番号</label><input type="text" id="d-no" readonly></div>
+    </div>
+    <div class="r2">
+      <div><label>発行日</label><input type="date" id="d-date"></div>
+      <div><label>支払期限</label><input type="date" id="d-due"></div>
+    </div>
+    <label>案件</label>
+    <select id="d-case" onchange="loadDocCase()"><option value="">案件を選択...</option></select>
+    <div class="r2" style="margin-top:8px">
+      <div><label>顧客名</label><input type="text" id="d-client"></div>
+      <div><label>現場名</label><input type="text" id="d-site"></div>
+    </div>
+  </div>
+  <div class="cd">
+    <div class="ct">明細</div>
+    <div class="iw"><table class="it"><thead><tr><th style="width:35%">内容</th><th style="width:8%">単位</th><th style="width:15%">単価</th><th style="width:8%">数量</th><th style="width:14%">税</th><th style="width:12%;text-align:right">金額</th><th style="width:8%"></th></tr></thead><tbody id="db"></tbody></table></div>
+    <button class="btn bs bsm" onclick="addRow('db')" style="margin-top:6px">＋ 行追加</button>
+    <div style="text-align:right;margin-top:8px;font-size:15px;font-weight:500">合計: <span id="dtotal">¥0</span></div>
+  </div>
+  <div class="cd"><label>備考</label><textarea id="d-note" rows="2"></textarea></div>
+  <div class="brow np">
+    <button class="btn bs" onclick="nav('list')">戻る</button>
+    <button class="btn bp" onclick="preview()">プレビュー</button>
+  </div>
+  <div id="parea" style="margin-top:16px;display:none"></div>
+  <div class="brow np" id="dact" style="display:none">
+    <button class="btn bs" onclick="window.print()">🖨 印刷/PDF</button>
+    <button class="btn bp" onclick="issueGas()">📊 シート記録</button>
+  </div>
+</div>
+
+<!-- 設定 -->
+<div class="pg" id="pg-set">
+  <div class="ct">設定</div>
+  <div class="cd">
+    <label>GAS URL</label>
+    <input type="text" id="s-gas">
+    <button class="btn bp bsm" onclick="saveSetting()" style="margin-top:4px">保存して接続テスト</button>
+    <div id="s-res" style="font-size:12px;margin-top:8px;color:var(--ink3)"></div>
+  </div>
+  <div class="cd">
+    <label>人件費単価</label><input type="number" id="s-rate" value="2000">
+    <label>会社情報（書類用）</label><textarea id="s-co" rows="4" placeholder="会社名&#10;住所&#10;TEL"></textarea>
+    <button class="btn bs bsm" onclick="saveCoInfo()" style="margin-top:4px">保存</button>
+  </div>
+</div>
+
+<!-- ナビ -->
+<div class="bnav">
+  <button class="on" onclick="nav('list')" id="n-list"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>案件</button>
+  <button onclick="newCase()" id="n-edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>登録</button>
+  <button onclick="nav('docs')" id="n-docs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>書類</button>
+  <button onclick="nav('set')" id="n-set"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>設定</button>
+</div>
+
+<script>
+/* ═══ 玄繕 業務管理アプリ — 完成版 ═══ */
+var GAS=ls('genzen_gas')||'https://script.google.com/macros/s/AKfycbyIGLx1iLdKNXEi6zb9-4NYV_FFngVJQvttFzUVqUFhssUaIPuQh1E6ay6cRbe4KA6T/exec';
+var RATE=parseInt(ls('genzen_rate')||'2000',10);
+var CO=ls('genzen_co')||'玄繕\n福岡県福岡市博多区博多駅前';
+var cases=[],photos=[],ddInit=false;
+
+function ls(k,v){if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}
+function $(id){return document.getElementById(id)}
+function esc(s){var d=document.createElement('div');d.textContent=s||'';return d.innerHTML}
+function num(n){return(Math.round(Number(n)||0)).toLocaleString()}
+function today(){return new Date().toISOString().slice(0,10)}
+function toast(m){var t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2500)}
+function dot(ok){$('dot').className='dot'+(ok?' ok':' err')}
+function jpDate(s){if(!s)return'';var p=s.split('-');return p[0]+'年'+parseInt(p[1])+'月'+parseInt(p[2])+'日'}
+
+/* ─── ナビ ─── */
+function nav(p){
+  document.querySelectorAll('.pg').forEach(function(e){e.classList.remove('on')});
+  document.querySelectorAll('.bnav button').forEach(function(e){e.classList.remove('on')});
+  var el=$('pg-'+p);if(el)el.classList.add('on');
+  var nb=$('n-'+p);if(nb)nb.classList.add('on');
+  if(p==='list')loadCases();
+  if(p==='docs')initDocs();
+  if(p==='set')initSet();
 }
 
-function doPost(e) {
-  var p;
-  try {
-    p = JSON.parse(e.postData.contents);
-  } catch (err) {
-    // URLSearchParams形式のフォールバック
-    p = e.parameter || {};
-  }
-  var action = p.action || (e.parameter || {}).action || '';
-  var result;
-  try {
-    if (action === 'saveCase') {
-      result = saveCase(p);
-    } else if (action === 'updateCase') {
-      result = updateCase(p);
-    } else if (action === 'issueDoc') {
-      result = issueDoc(p);
-    } else if (action === 'uploadPhoto') {
-      result = uploadPhoto(p);
-    } else {
-      result = { error: '不明なアクション: ' + action };
-    }
-  } catch (err) {
-    result = { error: err.message };
-  }
-  return ContentService.createTextOutput(JSON.stringify(result))
-    .setMimeType(ContentService.MimeType.JSON);
+function newCase(){
+  $('f-no').value='';$('etitle').textContent='新規案件登録';
+  $('f-date').value=today();$('f-client').value='';$('f-site').value='';
+  $('f-type').selectedIndex=0;$('f-note').value='';
+  $('f-mat').value='0';$('f-hrs').value='0';$('f-rate').value=RATE;
+  $('ib').innerHTML='';$('pgrid').innerHTML='';photos=[];
+  addRow('ib');calcCost();nav('edit');
 }
 
-// ─── ヘッダー行を探す ───
-function findHeaderRow(data) {
-  for (var i = 0; i < Math.min(data.length, 20); i++) {
-    if (String(data[i][0]).indexOf('案件番号') !== -1) {
-      return i;
-    }
-  }
-  return 9; // デフォルト: 10行目(0-indexed=9)
+/* ─── 案件一覧 ─── */
+function loadCases(){
+  $('clist').innerHTML='<div class="ld"><div class="sp"></div>読み込み中...</div>';
+  gGet('getCases').then(function(d){
+    cases=(d&&d.cases)||[];renderList();dot(true);fillClients();fillDocSel();
+  }).catch(function(e){
+    $('clist').innerHTML='<div class="ld" style="color:var(--red)">接続エラー</div>';dot(false);
+  });
 }
 
-// ─── 案件一覧取得 ───
-function getCases() {
-  var ss = SpreadsheetApp.openById(SHEET_ID);
-  var sheet = ss.getSheetByName('案件管理') || ss.getSheets()[0];
-  var data = sheet.getDataRange().getValues();
-  var headerIdx = findHeaderRow(data);
-  var dataStart = headerIdx + 1;
-  var caseMap = {};
-  var caseOrder = [];
-
-  for (var i = dataStart; i < data.length; i++) {
-    var row = data[i];
-    var no = String(row[0] || '').trim();
-    if (!no) continue;
-
-    if (!caseMap[no]) {
-      caseMap[no] = {
-        no: no,
-        date: row[1] ? Utilities.formatDate(new Date(row[1]), 'Asia/Tokyo', 'yyyy-MM-dd') : '',
-        client: String(row[2] || ''),
-        clientCode: String(row[3] || ''),
-        site: String(row[4] || ''),
-        type: String(row[5] || ''),
-        total: Number(row[14]) || 0,
-        costMaterial: Number(row[15]) || 0,
-        costHours: Number(row[16]) || 0,
-        costLabor: Number(row[17]) || 0,
-        costActual: Number(row[18]) || 0,
-        profit: Number(row[19]) || 0,
-        note: String(row[20] || ''),
-        photoUrl: String(row[21] || ''),
-        status: String(row[22] || '作業中'),
-        items: []
-      };
-      caseOrder.push(no);
-    }
-    caseMap[no].items.push({
-      desc: String(row[6] || ''),
-      unit: String(row[7] || '式'),
-      price: Number(row[8]) || 0,
-      qty: Number(row[9]) || 0,
-      amount: Number(row[10]) || 0,
-      taxType: String(row[11] || '10%'),
-      tax: Number(row[12]) || 0,
-      taxIncluded: Number(row[13]) || 0
-    });
+function renderList(){
+  if(!cases.length){$('clist').innerHTML='<div class="ld">案件がありません</div>';return}
+  var h='';
+  for(var i=cases.length-1;i>=0;i--){
+    var c=cases[i],done=(c.status||'').indexOf('発行済')!==-1;
+    h+='<div class="ci" onclick="openCase(\''+esc(c.no)+'\')">';
+    h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">';
+    h+='<span style="font-family:var(--serif);font-weight:500;font-size:14px">'+esc(c.no)+'</span>';
+    h+='<span style="font-size:11px;padding:2px 8px;border-radius:12px;background:'+(done?'#d4edda':'var(--stone)')+';color:'+(done?'var(--grn)':'var(--ink2)')+'">'+esc(c.status||'作業中')+'</span>';
+    h+='</div>';
+    h+='<div style="font-size:12px;color:var(--ink3)">'+esc(c.client||'')+' — '+esc(c.site||'')+'</div>';
+    h+='<div style="font-size:12px;color:var(--ink3)">'+esc(c.date||'')+' / '+esc(c.type||'')+'</div>';
+    h+='<div style="font-size:15px;font-weight:500;text-align:right;margin-top:4px">¥'+num(c.total)+'</div>';
+    h+='</div>';
   }
-
-  var cases = [];
-  for (var j = 0; j < caseOrder.length; j++) {
-    cases.push(caseMap[caseOrder[j]]);
-  }
-  return { cases: cases };
+  $('clist').innerHTML=h;
 }
 
-// ─── 顧客リスト取得 ───
-function getClients() {
-  var ss = SpreadsheetApp.openById(SHEET_ID);
-  var sheet = ss.getSheetByName('案件管理') || ss.getSheets()[0];
-  var data = sheet.getDataRange().getValues();
-  var headerIdx = findHeaderRow(data);
-  var clients = {};
-  for (var i = headerIdx + 1; i < data.length; i++) {
-    var name = String(data[i][2] || '').trim();
-    if (name) clients[name] = true;
-  }
-  return { clients: Object.keys(clients).sort() };
+function openCase(no){
+  var c=null;for(var i=0;i<cases.length;i++)if(cases[i].no===no){c=cases[i];break}
+  if(!c)return;
+  $('f-no').value=c.no;$('etitle').textContent='案件編集: '+c.no;
+  $('f-date').value=c.date||today();$('f-client').value=c.client||'';
+  $('f-site').value=c.site||'';$('f-note').value=c.note||'';
+  $('f-mat').value=c.costMaterial||0;$('f-hrs').value=c.costHours||0;$('f-rate').value=RATE;
+  photos=[];$('pgrid').innerHTML='';
+  var ts=$('f-type');for(var t=0;t<ts.options.length;t++)if(ts.options[t].value===c.type)ts.selectedIndex=t;
+  $('ib').innerHTML='';
+  if(c.items&&c.items.length)for(var j=0;j<c.items.length;j++)addRow('ib',c.items[j]);
+  else addRow('ib');
+  recalc('ib','itotal');calcCost();nav('edit');
 }
 
-// ─── 案件保存（新規） ───
-function saveCase(p) {
-  var ss = SpreadsheetApp.openById(SHEET_ID);
-  var sheet = ss.getSheetByName('案件管理') || ss.getSheets()[0];
-  var data = sheet.getDataRange().getValues();
-  var headerIdx = findHeaderRow(data);
-  var dataStart = headerIdx + 1; // 11行目
-
-  // 案件番号を自動採番（YYYYMM-連番）
-  var now = new Date();
-  var month = Utilities.formatDate(now, 'Asia/Tokyo', 'yyyyMM');
-  var maxSeq = 0;
-  for (var i = dataStart; i < data.length; i++) {
-    var existNo = String(data[i][0] || '');
-    if (existNo.indexOf(month + '-') === 0) {
-      var seq = parseInt(existNo.split('-')[1], 10) || 0;
-      if (seq > maxSeq) maxSeq = seq;
-    }
-  }
-  var caseNo = month + '-' + String(maxSeq + 1).padStart(3, '0');
-
-  // 明細パース
-  var items = [];
-  try { items = JSON.parse(p.items || '[]'); } catch(e) {}
-  if (!items.length) items = [{}];
-
-  var costRate = Number(p.costRate) || COST_RATE;
-  var costHours = Number(p.costHours) || 0;
-  var costMaterial = Number(p.costMaterial) || 0;
-  var costLabor = costHours * costRate;
-  var costTotal = costMaterial + costLabor;
-  var total = Number(p.total) || 0;
-  var profit = total - costTotal;
-
-  // 書き込み位置: A列を下から探して最後にデータがある行を見つける
-  var colA = sheet.getRange('A:A').getValues();
-  var lastDataRow = dataStart;
-  for (var r = colA.length - 1; r >= dataStart; r--) {
-    if (String(colA[r][0]).trim() !== '') { lastDataRow = r; break; }
-  }
-  var nextRow = lastDataRow + 2; // 1-indexed: lastDataRow(0-indexed) + 1 + 1
-
-  var rows = [];
-  for (var idx = 0; idx < items.length; idx++) {
-    var item = items[idx];
-    var price = Number(item.price) || 0;
-    var qty = Number(item.qty) || 1;
-    var amount = Number(item.total) || (price * qty);
-    var taxType = item.taxType || '10%';
-    var taxRate = taxType === '非課税' ? 0 : (taxType === '8%軽減' ? 0.08 : 0.1);
-    var taxAmt = Math.floor(amount * taxRate);
-    var taxLabel = taxType === '非課税' ? '非課税' : (taxType === '8%軽減' ? '8%' : '10%');
-
-    rows.push([
-      caseNo,                                    // A: 案件番号
-      p.date || Utilities.formatDate(now, 'Asia/Tokyo', 'yyyy-MM-dd'), // B: 日付
-      idx === 0 ? (p.client || '') : '',         // C: 顧客名
-      idx === 0 ? (p.clientCode || '') : '',     // D: 顧客コード
-      idx === 0 ? (p.site || '') : '',           // E: 現場名
-      idx === 0 ? (p.type || '') : '',           // F: 作業種別
-      item.desc || '',                           // G: 作業詳細
-      item.unit || '式',                         // H: 単位
-      price,                                     // I: 請求単価
-      qty,                                       // J: 数量
-      amount,                                    // K: 金額
-      taxLabel,                                  // L: 課税区分
-      taxAmt,                                    // M: 消費税
-      amount + taxAmt,                           // N: 税込金額
-      idx === 0 ? total : '',                    // O: 総合計
-      idx === 0 ? costMaterial : '',             // P: 材料費
-      idx === 0 ? costHours : '',                // Q: 作業時間
-      idx === 0 ? costLabor : '',                // R: 人件費
-      idx === 0 ? costTotal : '',                // S: 実際経費
-      idx === 0 ? profit : '',                   // T: 利益
-      idx === 0 ? (p.note || '') : '',           // U: 備考
-      '',                                        // V: 画像フォルダURL
-      idx === 0 ? (p.status || '作業中') : ''    // W: ステータス
-    ]);
-  }
-
-  sheet.getRange(nextRow, 1, rows.length, 23).setValues(rows);
-
-  return { caseNo: caseNo, status: 'ok', rowsWritten: rows.length };
+function fillClients(){
+  var m={};for(var i=0;i<cases.length;i++){var n=(cases[i].client||'').trim();if(n)m[n]=1}
+  var dl=$('dlc');dl.innerHTML='';
+  Object.keys(m).sort().forEach(function(n){var o=document.createElement('option');o.value=n;dl.appendChild(o)});
 }
 
-// ─── 案件更新（既存） ───
-function updateCase(p) {
-  var ss = SpreadsheetApp.openById(SHEET_ID);
-  var sheet = ss.getSheetByName('案件管理') || ss.getSheets()[0];
-  var data = sheet.getDataRange().getValues();
-  var headerIdx = findHeaderRow(data);
-  var dataStart = headerIdx + 1;
-  var caseNo = p.caseNo || '';
-  if (!caseNo) return { error: '案件番号がありません' };
-
-  // 該当案件の行範囲を特定
-  var startRow = -1;
-  var endRow = -1;
-  for (var i = dataStart; i < data.length; i++) {
-    var rowNo = String(data[i][0] || '').trim();
-    if (rowNo === caseNo) {
-      if (startRow === -1) startRow = i;
-      endRow = i;
-    }
-  }
-
-  // 古い行を削除（後ろから）
-  if (startRow !== -1) {
-    var numOldRows = endRow - startRow + 1;
-    sheet.deleteRows(startRow + 1, numOldRows); // 1-indexed
-  }
-
-  // 新しいデータを書き込み（saveCaseと同じ処理、案件番号は維持）
-  var items = [];
-  try { items = JSON.parse(p.items || '[]'); } catch(e) {}
-  if (!items.length) items = [{}];
-
-  var costRate = Number(p.costRate) || COST_RATE;
-  var costHours = Number(p.costHours) || 0;
-  var costMaterial = Number(p.costMaterial) || 0;
-  var costLabor = costHours * costRate;
-  var costTotal = costMaterial + costLabor;
-  var total = Number(p.total) || 0;
-  var profit = total - costTotal;
-
-  // 再取得して位置を決定（A列を下から探す）
-  var freshColA = sheet.getRange('A:A').getValues();
-  var freshLastData = headerIdx + 1;
-  for (var r2 = freshColA.length - 1; r2 >= headerIdx + 1; r2--) {
-    if (String(freshColA[r2][0]).trim() !== '') { freshLastData = r2; break; }
-  }
-  var insertRow = freshLastData + 2;
-
-  var rows = [];
-  var now = new Date();
-  for (var idx = 0; idx < items.length; idx++) {
-    var item = items[idx];
-    var price = Number(item.price) || 0;
-    var qty = Number(item.qty) || 1;
-    var amount = Number(item.total) || (price * qty);
-    var taxType = item.taxType || '10%';
-    var taxRate2 = taxType === '非課税' ? 0 : (taxType === '8%軽減' ? 0.08 : 0.1);
-    var taxAmt = Math.floor(amount * taxRate2);
-    var taxLabel = taxType === '非課税' ? '非課税' : (taxType === '8%軽減' ? '8%' : '10%');
-
-    rows.push([
-      caseNo,
-      p.date || Utilities.formatDate(now, 'Asia/Tokyo', 'yyyy-MM-dd'),
-      idx === 0 ? (p.client || '') : '',
-      idx === 0 ? (p.clientCode || '') : '',
-      idx === 0 ? (p.site || '') : '',
-      idx === 0 ? (p.type || '') : '',
-      item.desc || '',
-      item.unit || '式',
-      price, qty, amount,
-      taxLabel, taxAmt, amount + taxAmt,
-      idx === 0 ? total : '',
-      idx === 0 ? costMaterial : '',
-      idx === 0 ? costHours : '',
-      idx === 0 ? costLabor : '',
-      idx === 0 ? costTotal : '',
-      idx === 0 ? profit : '',
-      idx === 0 ? (p.note || '') : '',
-      '',
-      idx === 0 ? (p.status || '作業中') : ''
-    ]);
-  }
-
-  sheet.getRange(insertRow, 1, rows.length, 23).setValues(rows);
-  return { caseNo: caseNo, status: 'ok', updated: true };
+/* ─── 明細行 ─── */
+function addRow(tid,d){
+  d=d||{};var tb=$(tid),tr=document.createElement('tr');
+  var totalId=tid==='ib'?'itotal':'dtotal';
+  tr.innerHTML=
+    '<td><input type="text" value="'+esc(d.desc||'')+'" placeholder="作業内容" oninput="recalc(\''+tid+'\',\''+totalId+'\')"></td>'+
+    '<td><select><option'+(d.unit==='式'||!d.unit?' selected':'')+'>式</option><option'+(d.unit==='m²'?' selected':'')+'>m²</option><option'+(d.unit==='枚'?' selected':'')+'>枚</option><option'+(d.unit==='本'?' selected':'')+'>本</option><option'+(d.unit==='個'?' selected':'')+'>個</option><option'+(d.unit==='時間'?' selected':'')+'>時間</option></select></td>'+
+    '<td><input type="number" value="'+(d.price||'')+'" placeholder="0" oninput="recalc(\''+tid+'\',\''+totalId+'\')"></td>'+
+    '<td><input type="number" value="'+(d.qty||1)+'" placeholder="1" oninput="recalc(\''+tid+'\',\''+totalId+'\')"></td>'+
+    '<td><select onchange="recalc(\''+tid+'\',\''+totalId+'\')">'+'<option value="10%"'+((!d.taxType||d.taxType==='10%')?' selected':'')+'>10%</option>'+'<option value="8%軽減"'+(d.taxType==='8%軽減'||d.taxType==='8%'?' selected':'')+'>8%</option>'+'<option value="非課税"'+(d.taxType==='非課税'?' selected':'')+'>非課税</option></select></td>'+
+    '<td style="text-align:right;font-weight:500;white-space:nowrap">¥0</td>'+
+    '<td style="text-align:center"><button style="padding:4px 8px;background:none;border:none;color:var(--red);font-size:16px;cursor:pointer" onclick="this.closest(\'tr\').remove();recalc(\''+tid+'\',\''+totalId+'\')">×</button></td>';
+  tb.appendChild(tr);recalc(tid,totalId);
 }
 
-// ─── 書類発行 → 履歴記録 + ステータス更新 ───
-function issueDoc(p) {
-  var ss = SpreadsheetApp.openById(SHEET_ID);
-  var sheet = ss.getSheetByName('案件管理') || ss.getSheets()[0];
-  var data = sheet.getDataRange().getValues();
-  var headerIdx = findHeaderRow(data);
-
-  var docType = p.docType || '見積書';
-  var caseNo = p.caseNo || '';
-  var docNo = p.docNo || '';
-  var issueDate = p.date || Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd');
-  var client = p.client || '';
-  var site = p.site || '';
-  var total = parseFloat(p.total || '0') || 0;
-
-  // 日本語の日付
-  var d = new Date(issueDate);
-  var jpDate = Utilities.formatDate(d, 'Asia/Tokyo', 'yyyy年MM月dd日');
-  var statusText = docType + '発行済 ' + jpDate;
-
-  // ステータス列を更新（案件番号で検索）
-  if (caseNo && caseNo !== '未指定') {
-    for (var i = headerIdx + 1; i < data.length; i++) {
-      if (String(data[i][0]).trim() === caseNo) {
-        sheet.getRange(i + 1, 23).setValue(statusText); // W列
-        break;
-      }
-    }
+function getItems(tid){
+  var rows=document.querySelectorAll('#'+tid+' tr'),items=[],gt=0;
+  for(var i=0;i<rows.length;i++){
+    var inp=rows[i].querySelectorAll('input'),sel=rows[i].querySelectorAll('select');
+    var desc=inp[0]?inp[0].value:'',price=inp[1]?parseFloat(inp[1].value)||0:0,qty=inp[2]?parseFloat(inp[2].value)||1:1;
+    var unit=sel[0]?sel[0].value:'式',tax=sel[1]?sel[1].value:'10%';
+    var amt=price*qty,tr=tax==='非課税'?0:(tax==='8%軽減'?0.08:0.1),txAmt=Math.floor(amt*tr),tot=amt+txAmt;
+    var tc=rows[i].querySelectorAll('td');if(tc[5])tc[5].textContent='¥'+num(tot);
+    gt+=tot;
+    items.push({desc:desc,unit:unit,price:price,qty:qty,total:amt,taxType:tax,tax:txAmt,taxIncluded:tot});
   }
-
-  // 書類発行履歴シート
-  var histSheet = ss.getSheetByName('書類発行履歴');
-  if (!histSheet) {
-    histSheet = ss.insertSheet('書類発行履歴');
-    histSheet.getRange(1, 1, 1, 8).setValues([[
-      '発行日時', '書類種別', '書類番号', '案件番号', '顧客名', '現場名', '税込金額', '備考'
-    ]]);
-    histSheet.getRange(1, 1, 1, 8).setFontWeight('bold');
-  }
-
-  var items = [];
-  try { items = JSON.parse(p.items || '[]'); } catch(e) {}
-  var summary = [];
-  for (var k = 0; k < items.length; k++) {
-    if (items[k].desc) summary.push(items[k].desc);
-  }
-
-  histSheet.appendRow([
-    Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd HH:mm'),
-    docType, docNo, caseNo || '未指定', client, site, total,
-    summary.join('、') || p.note || ''
-  ]);
-
-  return { docNo: docNo, status: 'ok', message: statusText };
+  return{items:items,total:gt};
 }
 
-// ─── 写真アップロード ───
-function uploadPhoto(p) {
-  var folder;
-  try {
-    folder = DriveApp.getFolderById(FOLDER_ID);
-  } catch(e) {
-    return { error: 'フォルダにアクセスできません' };
-  }
+function recalc(tid,totalId){var r=getItems(tid);$(totalId).textContent='¥'+num(r.total);if(tid==='ib')calcCost()}
 
-  var caseNo = p.caseNo || '未分類';
-  // 案件フォルダを作成or取得
-  var caseFolders = folder.getFoldersByName(caseNo);
-  var caseFolder;
-  if (caseFolders.hasNext()) {
-    caseFolder = caseFolders.next();
-  } else {
-    caseFolder = folder.createFolder(caseNo);
-  }
+function calcCost(){
+  var r=getItems('ib'),mat=parseFloat($('f-mat').value)||0,hrs=parseFloat($('f-hrs').value)||0,rate=parseFloat($('f-rate').value)||RATE;
+  var lab=hrs*rate,ct=mat+lab,pf=r.total-ct;
+  $('ctotal').textContent='¥'+num(ct);$('cprofit').textContent='¥'+num(pf);
+  $('cprofit').style.color=pf>=0?'var(--grn)':'var(--red)';
+}
 
-  var photoData = p.photoData || '';
-  var fileName = p.fileName || ('photo_' + new Date().getTime() + '.jpg');
-
-  if (!photoData) return { error: '写真データがありません' };
-
-  // base64デコードしてファイル作成
-  var decoded = Utilities.base64Decode(photoData);
-  var blob = Utilities.newBlob(decoded, 'image/jpeg', fileName);
-  var file = caseFolder.createFile(blob);
-
-  return {
-    status: 'ok',
-    fileUrl: file.getUrl(),
-    fileId: file.getId(),
-    folderUrl: caseFolder.getUrl()
+/* ─── 保存 ─── */
+function saveCase(){
+  var btn=$('bsave');btn.disabled=true;btn.textContent='保存中...';
+  var r=getItems('ib'),cno=$('f-no').value,isUp=!!cno;
+  var p={
+    action:isUp?'updateCase':'saveCase',
+    date:$('f-date').value,client:$('f-client').value,site:$('f-site').value,
+    type:$('f-type').value,items:JSON.stringify(r.items),total:r.total,
+    costMaterial:parseFloat($('f-mat').value)||0,
+    costHours:parseFloat($('f-hrs').value)||0,
+    costRate:parseFloat($('f-rate').value)||RATE,
+    note:$('f-note').value,status:'作業中'
   };
+  if(isUp)p.caseNo=cno;
+
+  gPost(p).then(function(d){
+    if(d&&(d.caseNo||d.updated)){
+      toast('保存しました'+(d.caseNo?' ['+d.caseNo+']':''));
+      var sno=d.caseNo||cno;
+      upPhotos(sno);nav('list');
+    }else{
+      toast('送信完了（シートを確認）');nav('list');
+    }
+  }).catch(function(){
+    toast('送信完了（シートを確認）');nav('list');
+  }).finally(function(){btn.disabled=false;btn.textContent='保存'});
 }
+
+/* ─── 写真 ─── */
+function addPhotos(inp){
+  for(var i=0;i<inp.files.length;i++){
+    (function(f){var rd=new FileReader();rd.onload=function(e){photos.push(e.target.result);renderPh()};rd.readAsDataURL(f)})(inp.files[i]);
+  }
+  inp.value='';
+}
+function renderPh(){
+  var h='';for(var i=0;i<photos.length;i++)h+='<img class="pt" src="'+photos[i]+'" onclick="photos.splice('+i+',1);renderPh()">';
+  $('pgrid').innerHTML=h;
+}
+function upPhotos(cno){
+  if(!photos.length)return;
+  for(var i=0;i<photos.length;i++){
+    var b=photos[i].split(',')[1];if(!b)continue;
+    gPost({action:'uploadPhoto',caseNo:cno,photoData:b,fileName:'photo_'+(i+1)+'_'+Date.now()+'.jpg'}).catch(function(){});
+  }
+}
+
+/* ─── 書類発行 ─── */
+function initDocs(){
+  if(!ddInit){$('d-date').value=today();var d=new Date();d.setMonth(d.getMonth()+2);d.setDate(0);$('d-due').value=d.toISOString().slice(0,10);ddInit=true}
+  mkDocNo();fillDocSel();
+  if(!document.querySelectorAll('#db tr').length)addRow('db');
+}
+function mkDocNo(){
+  var t=$('d-type').value,px={見積書:'EST',請求書:'INV',納品書:'DLV',報告書:'RPT'}[t]||'DOC';
+  var d=new Date(),ymd=String(d.getFullYear()).slice(2)+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
+  $('d-no').value=px+'-'+ymd+'-001';
+}
+function fillDocSel(){
+  var sel=$('d-case'),cv=sel.value;sel.innerHTML='<option value="">案件を選択...</option>';
+  for(var i=cases.length-1;i>=0;i--){
+    var c=cases[i],o=document.createElement('option');o.value=c.no;
+    o.textContent=c.no+' - '+(c.client||'')+' '+(c.site||'');sel.appendChild(o);
+  }
+  if(cv)sel.value=cv;
+}
+function loadDocCase(){
+  var no=$('d-case').value;if(!no)return;
+  var c=null;for(var i=0;i<cases.length;i++)if(cases[i].no===no){c=cases[i];break}
+  if(!c)return;
+  $('d-client').value=c.client||'';$('d-site').value=c.site||'';
+  $('db').innerHTML='';
+  if(c.items&&c.items.length)for(var j=0;j<c.items.length;j++)addRow('db',c.items[j]);
+  else addRow('db');
+  recalc('db','dtotal');
+}
+
+function preview(){
+  var type=$('d-type').value,no=$('d-no').value,date=$('d-date').value,due=$('d-due').value;
+  var client=$('d-client').value,site=$('d-site').value,note=$('d-note').value,cno=$('d-case').value;
+  var r=getItems('db'),items=r.items,total=r.total;
+  var t10=0,t8=0,b10=0,b8=0;
+  for(var i=0;i<items.length;i++){
+    if(items[i].taxType==='10%'){b10+=items[i].total||0;t10+=items[i].tax||0}
+    else if(items[i].taxType==='8%軽減'||items[i].taxType==='8%'){b8+=items[i].total||0;t8+=items[i].tax||0}
+  }
+  var h='<div class="dp">';
+  h+='<div class="dtt"><span class="dtx">'+esc(type)+'</span></div>';
+  h+='<div style="display:flex;justify-content:space-between;margin-bottom:16px">';
+  h+='<div><div style="font-family:var(--serif);font-size:16px;font-weight:500">'+esc(client||'—')+' 御中</div>';
+  if(site)h+='<div style="font-size:12px;color:var(--ink3);margin-top:2px">現場: '+esc(site)+'</div>';
+  h+='</div>';
+  h+='<div style="text-align:right;font-size:12px;color:var(--ink2)">';
+  h+='<div>'+esc(no)+'</div>';
+  if(cno)h+='<div>案件: '+esc(cno)+'</div>';
+  h+='<div>発行日: '+jpDate(date)+'</div>';
+  if(type==='請求書'&&due)h+='<div>支払期限: '+jpDate(due)+'</div>';
+  h+='</div></div>';
+  h+='<div style="background:var(--bg2);padding:12px 16px;border-radius:6px;margin-bottom:16px;text-align:center">';
+  h+='<div style="font-size:12px;color:var(--ink3)">合計金額（税込）</div>';
+  h+='<div style="font-size:24px;font-weight:600;font-family:var(--serif);letter-spacing:.05em">¥'+num(total)+'</div></div>';
+  h+='<table><thead><tr><th>内容</th><th style="width:50px">単位</th><th style="width:70px;text-align:right">単価</th><th style="width:40px;text-align:right">数量</th><th style="width:40px;text-align:right">税</th><th style="width:80px;text-align:right">金額</th></tr></thead><tbody>';
+  for(var j=0;j<items.length;j++){
+    var it=items[j];if(!it.desc)continue;
+    h+='<tr><td>'+esc(it.desc)+'</td><td>'+esc(it.unit)+'</td><td style="text-align:right">¥'+num(it.price)+'</td><td style="text-align:right">'+it.qty+'</td><td style="text-align:right">'+esc(it.taxType==='非課税'?'非課税':it.taxType)+'</td><td style="text-align:right">¥'+num(it.taxIncluded)+'</td></tr>';
+  }
+  h+='</tbody></table>';
+  h+='<div style="font-size:12px;margin:8px 0;color:var(--ink3)">';
+  if(b10>0)h+='10%対象: ¥'+num(b10)+' (税¥'+num(t10)+') ';
+  if(b8>0)h+='8%対象: ¥'+num(b8)+' (税¥'+num(t8)+')';
+  h+='</div>';
+  if(note){h+='<div style="margin-top:12px;padding:10px;background:var(--bg2);border-radius:6px;font-size:12px"><div style="font-weight:500;margin-bottom:4px">備考</div>'+esc(note).replace(/\n/g,'<br>')+'</div>'}
+  h+='<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:24px">';
+  h+='<div style="display:flex;justify-content:flex-end"><div class="stamp">玄繕</div></div>';
+  h+='<div style="text-align:right;font-size:11px;line-height:1.8;color:var(--ink3)">'+esc(CO).replace(/\n/g,'<br>')+'</div>';
+  h+='</div></div>';
+  $('parea').innerHTML=h;$('parea').style.display='block';$('dact').style.display='flex';
+  $('parea').scrollIntoView({behavior:'smooth'});
+}
+
+function issueGas(){
+  var r=getItems('db');
+  var p={action:'issueDoc',docType:$('d-type').value,docNo:$('d-no').value,
+    caseNo:$('d-case').value||'',client:$('d-client').value,site:$('d-site').value,
+    date:$('d-date').value,dueDate:$('d-due').value,items:JSON.stringify(r.items),total:r.total,note:$('d-note').value};
+  gPost(p).then(function(d){
+    toast(d&&d.status==='ok'?'シートに記録しました':'送信完了');
+  }).catch(function(){toast('送信完了（確認中）')});
+}
+
+/* ─── 設定 ─── */
+function initSet(){$('s-gas').value=GAS;$('s-rate').value=RATE;$('s-co').value=CO}
+function saveSetting(){
+  var u=$('s-gas').value.trim();if(!u){toast('URLを入力');return}
+  ls('genzen_gas',u);GAS=u;$('s-res').textContent='テスト中...';
+  gGet('getCases').then(function(d){
+    if(d&&d.cases!==undefined){$('s-res').innerHTML='✅ 接続成功 (案件数:'+d.cases.length+')';dot(true)}
+    else{$('s-res').innerHTML='❌ エラー: '+(d?d.error:'不明');dot(false)}
+  }).catch(function(e){$('s-res').innerHTML='❌ 接続失敗';dot(false)});
+}
+function saveCoInfo(){
+  RATE=parseInt($('s-rate').value,10)||2000;CO=$('s-co').value;
+  ls('genzen_rate',RATE);ls('genzen_co',CO);toast('保存しました');
+}
+
+/* ─── GAS通信 ─── */
+function gGet(action){
+  return fetch(GAS+'?action='+encodeURIComponent(action),{redirect:'follow'})
+    .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json()});
+}
+
+function gPost(p){
+  // GAS POST→302リダイレクトでbody消失を回避: 全てGETで送る
+  // actionはURLパラメータ、残りはpayloadにJSON化して送る
+  var action=p.action||'';
+  var payload=JSON.stringify(p);
+  var url=GAS+'?action='+encodeURIComponent(action)+'&payload='+encodeURIComponent(payload);
+
+  // URL長制限チェック（約8000文字まで安全）
+  if(url.length>7500){
+    // 写真など大きいデータはno-cors POSTで送信（レスポンス不要）
+    return fetch(GAS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:payload})
+      .then(function(){return{status:'sent-nocors'}});
+  }
+
+  return fetch(url,{redirect:'follow'})
+    .then(function(r){return r.json()})
+    .catch(function(){return{status:'sent'}});
+}
+
+/* ─── 初期化 ─── */
+// 古いキャッシュURLを強制クリア（デプロイURL変更対応）
+localStorage.removeItem('genzen_gas');
+loadCases();
+</script>
+</body>
+</html>
