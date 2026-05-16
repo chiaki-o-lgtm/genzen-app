@@ -55,15 +55,16 @@ textarea{resize:vertical;min-height:60px}
 .dp th{background:var(--ink);color:#fff;padding:6px 8px;font-weight:500;text-align:left}
 .dp td{padding:6px 8px;border-bottom:1px solid var(--stone)}
 .stamp{width:60px;height:60px;border:2px solid var(--red);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--red);font-family:var(--serif);font-size:14px;font-weight:600}
-/* ★修正⑤: 印刷CSS — #pareaを表示 */
+/* ★修正⑤: 印刷CSS — プレビュー領域のみ表示 */
 @media print{
-  body{background:#fff;padding:0}
-  .hdr,.bnav,.np,.brow{display:none!important}
-  .pg{display:none!important}.pg.on{display:block!important;max-width:none;padding:0}
-  #parea{display:block!important}
-  .dp{border:none;padding:12mm 15mm;font-size:10pt;box-shadow:none}
+  body{background:#fff;padding:0;margin:0}
+  .hdr,.bnav,.np,.brow,.cd,.ct{display:none!important}
+  .pg{display:none!important}
+  #pg-docs{display:block!important;max-width:none;padding:0;margin:0}
+  #parea{display:block!important;margin:0!important}
+  #dact{display:none!important}
+  .dp{border:none;padding:10mm 15mm;font-size:10pt;box-shadow:none;page-break-inside:avoid}
   .dp th{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .cd{box-shadow:none;border:none}
 }
 </style>
 </head>
@@ -195,7 +196,7 @@ textarea{resize:vertical;min-height:60px}
 
 <script>
 /* ═══ 玄繕 業務管理アプリ — 修正版 ═══ */
-var GAS=ls('genzen_gas')||'https://script.google.com/macros/s/AKfycbyDNcEgR0AwbNCKdXxQD2RtGxuBHeDmf6sxBHGOUJcyXWYGkfzsFgClZSYxOqXrFxtw/exec';
+var GAS=ls('genzen_gas')||'https://script.google.com/macros/s/AKfycbwZ4CoNIhK4y7G4TOwCgp6Wb2VElAgPxp1m-wdqXFMdU4vAldegwFaIbM5-1-4JfYC0/exec';
 var RATE=parseInt(ls('genzen_rate')||'2000',10);
 var CO=ls('genzen_co')||'玄繕\n福岡県福岡市博多区博多駅前';
 var cases=[],photos=[],ddInit=false;
