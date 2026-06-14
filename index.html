@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>玄繕 業務管理</title>
 <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600&family=Noto+Sans+JP:wght@300;400;500;600&display=swap" rel="stylesheet">
+<!-- ★修正: PWA印刷バグ対応 - html2pdf.jsをロードしてPDF直生成 -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js" defer></script>
 <style>
 :root{--ink:#1a1a18;--ink2:#4a4a46;--ink3:#8a8a84;--bg:#faf9f6;--bg2:#f4f2ec;--stone:#e8e5dc;--bdr:#d8d4c8;--gold:#8a7a5a;--red:#8a2c2c;--grn:#2c6a3e;--serif:'Shippori Mincho',serif;--sans:'Noto Sans JP',sans-serif;--r:10px}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -195,7 +197,7 @@ textarea{resize:vertical;min-height:60px}
   </div>
   <div id="parea" style="margin-top:16px;display:none"></div>
   <div class="brow np" id="dact" style="display:none">
-    <button class="btn bs" onclick="window.print()">🖨 印刷/PDF</button>
+    <button class="btn bs" onclick="doPrint()">🖨 印刷/PDF</button>
     <button class="btn bp" onclick="issueGas()">📊 シート記録</button>
   </div>
 </div>
@@ -399,6 +401,47 @@ function moveRow(btn,dir){
     if(next)tr.parentNode.insertBefore(next,tr);
   }
   /* 計算結果は変わらないのでrecalcは不要 */
+}
+/* ★修正: PWA環境ではwindow.print()が動かないバグへの対応 - html2pdf.jsで直接PDF生成 */
+function isPWA(){
+  return (window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||
+         window.navigator.standalone||
+         document.referrer.indexOf('android-app://')===0;
+}
+function doPrint(){
+  var area=$('parea');
+  if(!area||area.style.display==='none'){toast('先にプレビューを押してください');return}
+  var dp=area.querySelector('.dp');
+  if(!dp){toast('プレビュー内容が見つかりません');return}
+  /* PWA環境 かつ html2pdfロード済 → PDF直接生成 */
+  if(isPWA()&&typeof html2pdf!=='undefined'){
+    var docType=($('d-type').value||'書類').replace(/\s+/g,'');
+    var docNo=$('d-no').value||'document';
+    var filename=docType+'_'+docNo+'.pdf';
+    /* PDF生成用に一時的にborder/shadowを除去 */
+    var orig={border:dp.style.border,shadow:dp.style.boxShadow,radius:dp.style.borderRadius};
+    dp.style.border='none';
+    dp.style.boxShadow='none';
+    dp.style.borderRadius='0';
+    toast('PDF生成中... 数秒お待ちください');
+    html2pdf().set({
+      margin:[8,8,8,8],
+      filename:filename,
+      image:{type:'jpeg',quality:0.95},
+      html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false},
+      jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
+    }).from(dp).save().then(function(){
+      dp.style.border=orig.border;dp.style.boxShadow=orig.shadow;dp.style.borderRadius=orig.radius;
+      toast('PDFを保存しました');
+    }).catch(function(err){
+      dp.style.border=orig.border;dp.style.boxShadow=orig.shadow;dp.style.borderRadius=orig.radius;
+      toast('PDF生成失敗 - 通常印刷を試します');
+      window.print();
+    });
+  }else{
+    /* 通常ブラウザ → ネイティブ印刷ダイアログ */
+    window.print();
+  }
 }
 
 /* ★修正: cells[]ベースで取得（プルダウンと入力の切替に対応） */
