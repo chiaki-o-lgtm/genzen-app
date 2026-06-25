@@ -87,6 +87,7 @@ textarea{resize:vertical;min-height:60px}
   #dact{display:none!important}
   .dp{border:none;padding:10mm 15mm;font-size:10pt;box-shadow:none;page-break-inside:avoid}
   .dp th{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .stamp{-webkit-print-color-adjust:exact;print-color-adjust:exact;border:2px solid #8a2c2c!important;color:#8a2c2c!important}
 }
 </style>
 </head>
@@ -639,8 +640,6 @@ function gPost(p){
 }
 
 /* ─── 初期化 ─── */
-// 古いキャッシュURLを強制クリア（デプロイURL変更対応）
-localStorage.removeItem('genzen_gas');
 loadCases();
 </script>
 </body>
